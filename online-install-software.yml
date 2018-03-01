@@ -1,0 +1,65 @@
+---
+- name: online install software
+  hosts: online-test-hosts
+  become: yes
+  become_method: sudo
+  gather_facts: False
+
+
+  vars:
+          project_info: "{{ lookup('file','input.yml') | from_yaml }}"
+
+  tasks:
+    - name: "set short hand project_root"
+      set_fact: project_root="{{ project_info['project_root'] }}"
+
+    - name: "set short hand vars"
+      set_fact: commonsetting="{{ project_root['common_setting'] }}"
+
+    - name: "set short hand vars"
+      set_fact: hostconfig="{{ project_root['host_config'] }}"
+
+    - name: "set short hand vars"
+      set_fact: appconfig="{{ hostconfig['online_install_config'] }}"
+
+    - name: create the "{{appconfig['app_home']}}" directory
+      file: path="{{appconfig['app_home']}}" owner=centos  group=centos state=directory mode=0755
+
+    - name: "copy find-and-package.sh.j2 scripts "
+      template: src=templates/find-and-package.sh.j2 dest={{appconfig['app_home']}}/find-and-package.sh  owner=centos group=centos  mode=0755
+
+    - name: "设置rpm为安装缓存模式"
+      shell: sed -i.bak -e 's/keepcache=0/keepcache=1/'   /etc/yum.conf;  mv  /var/cache/yum  /var/cache/yum_origin; yum install epel-release -y;
+      #rpm -Uvh http://repos.mesosphere.io/el/7/noarch/RPMS/mesosphere-el-repo-7-1.noarch.rpm
+      #rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-mesosphere
+      #yum install mesos marathon mesosphere-zookeeper -y
+
+    - name: "yum_repo"
+      yum: name={{ hostconfig['yum_repo_config']['yum_repo_uri'] }} state=present
+      when: hostconfig['yum_repo_config']['yum_repo_uri'] is defined
+
+    - name: "import rpm-gpg-key"
+      shell: rpm --import {{ hostconfig['yum_repo_config']['rpm-gpg-key'] }};
+      when: hostconfig['yum_repo_config']['rpm-gpg-key'] is defined
+
+    - name: "执行用户指定的软件包{{ hostconfig['yum_repo_config']['yum_software_packagename'] }}下载并安装"
+      yum: name={{ hostconfig['yum_repo_config']['yum_software_packagename'] }} state=present
+
+    - name: "拷贝各个rpm离线安装包,并打包成一个后缀为{{ hostconfig['yum_repo_config']['yum_software_packagename'] }}.rpm.tgz文件"
+      shell: cd {{appconfig['app_home']}}; {{appconfig['app_home']}}/find-and-package.sh
+
+    - name: "create the {{hostconfig['offline_rpm_save_config']['ansible_host_directory']}} directory,存放测试通过的离线软件安装包."
+      file: path="{{hostconfig['offline_rpm_save_config']['ansible_host_directory']}}" owner=centos  group=centos state=directory mode=0755
+      delegate_to: 127.0.0.1
+
+#    - name: "拷贝文件到ansible host 控制机器"
+#      copy: src={{appconfig['app_home']}}/{{ hostconfig['yum_repo_config']['yum_software_packagename'] }}-offline-install.rpm.tgz  dest={{hostconfig['offline_rpm_save_config']['ansible_host_directory']}}   owner=centos group=centos mode=0755
+#      delegate_to: "{{inventory_hostname}}"
+
+    - name: "拷贝{{ hostconfig['yum_repo_config']['yum_software_packagename'] }}软件离线包到ansible host 控制机器"
+      fetch:
+        src={{appconfig['app_home']}}/{{ hostconfig['yum_repo_config']['yum_software_packagename'] }}-offline-install.rpm.tgz
+        dest={{hostconfig['offline_rpm_save_config']['ansible_host_directory']}}/   owner=centos group=centos mode=0755
+        flat=yes
+    #  when: query_result.stdout.find('{{ hostconfig['yum_repo_config']['yum_software_packagename'] }}') != -1
+

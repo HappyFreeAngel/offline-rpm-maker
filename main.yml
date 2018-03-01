@@ -1,0 +1,58 @@
+# this is a 'play' include
+- name: "基于指定虚拟机模版的Linux RPM 离线安装包自动化制作."
+  hosts: localhost
+  gather_facts: False
+#  become: yes
+#  become_method: sudo
+
+  vars:
+    project_info: "{{ lookup('file','input.yml') | from_yaml }}"
+
+  pre_tasks:
+    - name: " 这个是在每个任务执行之前会执行的任务.特别注意,需要centos 用户支持sudo,免密码sudo, 具体办法:sudo visudo; centos  ALL=(ALL)	NOPASSWD: ALL"
+      shell: echo "任务开始...，检查依赖的文件是否存在."; ./before-run.sh;
+
+  tasks:
+    - set_fact: task_startup_timestamp="{{lookup('pipe','date \"+%Y-%m-%d %H:%M:%S\"')}}"
+
+    - name: "set short hand project_root"
+      set_fact: project_root="{{project_info['project_root']}}"
+
+    - name: "set short hand vars"
+      set_fact: commonsetting="{{project_info['project_root']['common_setting']}}"
+
+ # add a host alias that we reach through a tunnel (Ansible >= 2.0)
+    - add_host:
+        hostname: "{{ item.name }}"
+        groups: "online-test-hosts"
+        ansible_host: "{{ item.ip }}"
+       # ansible_port: 22
+        ansible_user: "root"
+        ansible_ssh_pass: "kaixin.com"
+      with_items: "{{project_root['all_hosts']['online-test-hosts']}}"
+
+    - add_host:
+        hostname: "{{ item.name }}"
+        groups: "offline-test-hosts"
+        ansible_host: "{{ item.ip }}"
+       # ansible_port: 22
+        ansible_user: "root"
+        ansible_ssh_pass: "kaixin.com"
+      with_items: "{{project_root['all_hosts']['offline-test-hosts']}}"
+
+- include: import-create-startup-vm.yml
+
+- include: wait-for-online-test-hosts.yml  max_wait_time_in_seconds=120
+
+- include: wait-for-offline-test-hosts.yml  max_wait_time_in_seconds=120
+
+- include: online-install-software.yml
+
+- include: offline-install-software.yml
+
+- include: notify.yml
+
+- post_tasks:
+    - name: "任务执行结束"
+      shell: echo 'goodbye'
+

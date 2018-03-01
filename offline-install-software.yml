@@ -1,0 +1,55 @@
+---
+- name: offline install software
+  hosts: offline-test-hosts
+  become: yes
+  become_method: sudo
+  gather_facts: True
+
+
+  vars:
+          project_info: "{{ lookup('file','input.yml') | from_yaml }}"
+
+  tasks:
+    - name: "set short hand project_root"
+      set_fact: project_root="{{ project_info['project_root'] }}"
+
+    - name: "set short hand vars"
+      set_fact: commonsetting="{{ project_root['common_setting'] }}"
+
+    - name: "set short hand vars"
+      set_fact: hostconfig="{{ project_root['host_config'] }}"
+
+    - name: "set short hand vars"
+      set_fact: appconfig="{{ hostconfig['offline_install_config'] }}"
+
+    - name: create the "{{appconfig['app_home']}}" directory
+      file: path="{{appconfig['app_home']}}" owner=centos  group=centos state=directory mode=0755
+
+    - name: "拷贝文件"
+      copy: src={{hostconfig['offline_rpm_save_config']['ansible_host_directory']}}/{{ hostconfig['yum_repo_config']['yum_software_packagename'] }}-offline-install.rpm.tgz  dest={{appconfig['app_home']}}   owner=centos group=centos mode=0755
+
+    - name: "测试离线安装包是否可以安装"
+      shell: cd {{appconfig['app_home']}}; mkdir {{ hostconfig['yum_repo_config']['yum_software_packagename'] }}-offline-install; tar -zxvf {{ hostconfig['yum_repo_config']['yum_software_packagename'] }}-offline-install.rpm.tgz -C {{ hostconfig['yum_repo_config']['yum_software_packagename'] }}-offline-install --strip-components=1; cd {{ hostconfig['yum_repo_config']['yum_software_packagename'] }}-offline-install; yum localinstall -y  *.rpm;
+
+    - name: "查询软件安装状态"
+      shell: rpm -qa | grep '{{ hostconfig['yum_repo_config']['yum_software_packagename'] }}'
+      register: query_result
+
+    - name: "inventory_hostname={{inventory_hostname}}测试是否安装成功.{{query_result.stdout}}"
+      shell: echo "恭喜你,{{ hostconfig['yum_repo_config']['yum_software_packagename'] }}软件离线包安装成功!"
+      when: query_result.stdout.find('{{ hostconfig['yum_repo_config']['yum_software_packagename'] }}') != -1
+
+    - name: "拷贝{{ hostconfig['yum_repo_config']['yum_software_packagename'] }}软件离线包到ansible host 控制机器"
+      fetch:
+        src={{appconfig['app_home']}}/{{ hostconfig['yum_repo_config']['yum_software_packagename'] }}-offline-install.rpm.tgz
+        dest={{hostconfig['offline_rpm_save_config']['ansible_host_directory']}}/{{ hostconfig['yum_repo_config']['yum_software_packagename'] }}-offline-install.rpm.tgz   owner=centos group=centos mode=0755
+        flat=yes
+      when: query_result.stdout.find('{{ hostconfig['yum_repo_config']['yum_software_packagename'] }}') != -1
+
+    - name: "安装失败删除ansible host 控制机器{{ hostconfig['yum_repo_config']['yum_software_packagename'] }}软件离线包"
+      shell: cd {{hostconfig['offline_rpm_save_config']['ansible_host_directory']}}; rm -f {{hostconfig['offline_rpm_save_config']['ansible_host_directory']}}/{{ hostconfig['yum_repo_config']['yum_software_packagename'] }}.rpm.tgz
+      when: query_result.stdout.find('{{ hostconfig['yum_repo_config']['yum_software_packagename'] }}') == -1
+      delegate_to: 127.0.0.1
+
+#解压缩文件到指定目录，并且原先带有的目录名称不要了,使用新的目录
+#tar -zxvf marathon-1.5.5.tgz  -C marathon --strip-components=1

@@ -1,0 +1,21 @@
+---
+- name: wait for online-test-hosts  vms up .
+  hosts: localhost
+  connection: local
+  vars:
+          project_info: "{{ lookup('file','input.yml') | from_yaml }}"
+
+  tasks:
+    - name: "set short hand project_root"
+      set_fact: project_root="{{ project_info['project_root'] }}"
+
+    - name: "set short hand vars"
+      set_fact: commonsetting="{{ project_root['common_setting'] }}"
+
+    - name: "set short hand vars"
+      set_fact: hostconfig="{{ project_root['host_config'] }}"
+
+    - name: "等待 {{ item.name }} 启动到,可以ssh进入,最多等待{{max_wait_time_in_seconds}}秒"
+      local_action: wait_for port=22 host="{{ item.ip }}" search_regex=OpenSSH delay=1 timeout={{max_wait_time_in_seconds}}
+      ignore_errors: yes
+      with_items: "{{project_root['all_hosts']['online-test-hosts']}}"

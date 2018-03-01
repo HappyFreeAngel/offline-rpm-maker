@@ -1,0 +1,66 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+VAGRANTFILE_API_VERSION = "2"
+# All Vagrant configuration is done below. The "2" in Vagrant.configure
+# configures the configuration version (we support older styles for
+# backwards compatibility). Please don't change it unless you know what
+# you're doing.
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+
+  config.vm.box = "{{project_root['vsphere_platform']['virtualbox']['vagrant_box_name']}}" #centos1708-jdk1.9-docker-17.12.0-ce-go1.9
+
+  #config.ssh.insert_key = true
+  config.vm.synced_folder ".", "/vagrant", disabled: true
+  config.ssh.username="root"
+  config.ssh.password="kaixin.com"
+  config.vm.provider :virtualbox do |vb|
+    vb.linked_clone = true
+    vb.memory = "1024"
+    vb.customize ["modifyvm", :id, "--nictype1", "virtio"]
+    vb.customize ["modifyvm", :id, "--nictype2", "virtio"]
+  end
+
+###########
+
+{% if project_root['all_hosts']['online-test-hosts'][0] is defined %}
+{%  for temphost  in  project_root['all_hosts']['online-test-hosts']  %}
+#{{temphost.name.split('.')[0]}}
+config.vm.define "{{temphost.name.split('.')[0]}}" do |web|
+web.vm.hostname = "{{temphost.name.split('.')[0]}}"
+web.vm.network :public_network, auto_config: true, ip: "{{temphost.ip}}", bridge: "{{ commonsetting['host_machine_bridge_nic_name'] }}", bootproto: "static", gateway: "{{hostconfig['vm_network_config']['gateway']}}"
+web.vm.provider :virtualbox do |vb|
+vb.linked_clone = true
+vb.name = "{{temphost.name.split('.')[0]}}"
+vb.cpus = {{temphost.cpu}}
+vb.memory = {{temphost.memory}}
+vb.customize ["modifyvm", :id, "--nictype1", "virtio"]
+vb.customize ["modifyvm", :id, "--nictype2", "virtio"]
+end
+
+end
+{%  endfor %}
+{% endif %}
+
+
+
+{% if project_root['all_hosts']['offline-test-hosts'][0] is defined %}
+{%  for temphost  in  project_root['all_hosts']['offline-test-hosts']  %}
+#{{temphost.name.split('.')[0]}}
+config.vm.define "{{temphost.name.split('.')[0]}}" do |web|
+web.vm.hostname = "{{temphost.name.split('.')[0]}}"
+web.vm.network :public_network, auto_config: true, ip: "{{temphost.ip}}", bridge: "{{ commonsetting['host_machine_bridge_nic_name'] }}", bootproto: "static", gateway: "{{hostconfig['vm_network_config']['gateway']}}"
+web.vm.provider :virtualbox do |vb|
+vb.linked_clone = true
+vb.name = "{{temphost.name.split('.')[0]}}"
+vb.cpus = {{temphost.cpu}}
+vb.memory = {{temphost.memory}}
+vb.customize ["modifyvm", :id, "--nictype1", "virtio"]
+vb.customize ["modifyvm", :id, "--nictype2", "virtio"]
+end
+
+end
+{%  endfor %}
+{% endif %}
+
+        
+end

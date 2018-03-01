@@ -1,0 +1,55 @@
+---
+- name: "执行结果发邮件通知"
+  hosts: localhost
+  connection: local
+#  become: yes
+#  become_method: sudo
+  gather_facts: False
+
+  vars:
+          project_info: "{{ lookup('file','input.yml') | from_yaml }}"
+
+  tasks:
+    - name: "set short hand project_root"
+      set_fact: project_root="{{ project_info['project_root'] }}"
+
+    - name: "set short hand vars"
+      set_fact: commonsetting="{{ project_root['common_setting'] }}"
+
+    - name: "set short hand vars"
+      set_fact: hostconfig="{{ project_root['host_config'] }}"
+
+    - name: "set short hand vars"
+      set_fact: appconfig="{{ hostconfig['mail_agent_config'] }}"
+
+    - name: "判断离线安装包是否下载成功并验证安装成功,处于可用状态."
+      shell: ls {{hostconfig['offline_rpm_save_config']['ansible_host_directory']}}/{{ hostconfig['yum_repo_config']['yum_software_packagename'] }}-offline-install.rpm.tgz
+      ignore_errors: True
+      register: result
+
+#    - name: "include vars of input.yml into the 'clustersetting' variable (2.2)."
+#      include_vars:
+#        file: input.yml
+#        name: clustersetting
+
+    - set_fact: task_finished_timestamp="{{lookup('pipe','date \"+%Y-%m-%d %H:%M:%S\"')}}"
+
+    - name: Sending an e-mail using robot@ascs.tech SMTP server:smtp.mxhichina.com
+      mail:
+          host: "{{hostconfig['mail_agent_config']['host']}}"
+          port: "{{hostconfig['mail_agent_config']['port']}}"
+          secure: "{{hostconfig['mail_agent_config']['secure']}}"
+          username: "{{hostconfig['mail_agent_config']['username']}}"
+          password: "{{hostconfig['mail_agent_config']['password']}}"
+          sender: "{{hostconfig['mail_agent_config']['sender']}}"
+
+          charset: "{{hostconfig['mail_notify_config']['charset']}}"
+          to: "{{hostconfig['mail_notify_config']['receiver_name']}} <{{hostconfig['mail_notify_config']['to']}}>"
+          bcc: "{{hostconfig['mail_notify_config']['to']}}"
+          cc: "{{hostconfig['mail_notify_config']['cc']}}"
+          subject: "{{hostconfig['yum_repo_config']['yum_software_packagename']}}的离线安装包创建已经结束. 开始时间: {{task_startup_timestamp}} 结束时间: {{task_finished_timestamp}}"
+          body: "'基于virtualbox模版文件{{hostconfig['vagrant_config']['virtualbox_template_filename']}}创建的关于{{hostconfig['yum_repo_config']['yum_software_packagename']}}的离线安装包创建已经结束.开始时间: {{task_startup_timestamp}} 结束时间: {{task_finished_timestamp}}'"
+
+      when: commonsetting['is_internet_up']==true and  (result | succeeded)
+
+

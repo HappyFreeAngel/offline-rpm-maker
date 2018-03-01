@@ -1,0 +1,22 @@
+#确保shell 切换到当前shell 脚本文件夹
+current_file_path=$(cd "$(dirname "$0")"; pwd)
+cd ${current_file_path}
+
+echo "查找拷贝所有依赖rpm包到指定目录"
+DATA_PATH=${current_file_path}/{{ hostconfig['yum_repo_config']['yum_software_packagename'] }}-offline-install
+
+if [  -d "$DATA_PATH" ]; then
+   rm -rf "$DATA_PATH"
+fi
+
+if [ ! -d "$DATA_PATH" ]; then
+   mkdir "$DATA_PATH" -p
+fi
+
+rpms=$(find /var/cache/yum  -name  "*.rpm" | grep '.rpm')
+for file in $rpms
+do
+cp $file  ${current_file_path}/{{ hostconfig['yum_repo_config']['yum_software_packagename'] }}-offline-install/
+done
+
+tar -czf {{ hostconfig['yum_repo_config']['yum_software_packagename'] }}-offline-install.rpm.tgz  {{ hostconfig['yum_repo_config']['yum_software_packagename'] }}-offline-install

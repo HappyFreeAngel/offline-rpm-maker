@@ -1,0 +1,28 @@
+# this is a 'play' include
+
+- name: reboot hosts.
+  hosts: online-test-hosts,offline-test-hosts
+#  gather_facts: False
+  become: yes
+  become_method: sudo
+  gather_facts: False
+
+  vars:
+          project_info: "{{ lookup('file','input.yml') | from_yaml }}"
+
+  tasks:
+    - name: "set short hand project_root"
+      set_fact: project_root="{{ project_info['project_root'] }}"
+
+    - name: "set short hand vars"
+      set_fact: commonsetting="{{ project_root['common_setting'] }}"
+
+    - name: "set short hand vars"
+      set_fact: hostconfig="{{ project_root['host_config'] }}"
+
+ # add a host alias that we reach through a tunnel (Ansible >= 2.0)
+    - name: "reboot host {{inventory_hostname}}"
+      shell: sleep 2 && /sbin/shutdown -r now
+      async: 1
+      poll: 0
+      ignore_errors: yes

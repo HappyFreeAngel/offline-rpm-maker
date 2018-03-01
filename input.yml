@@ -1,0 +1,121 @@
+---
+  project_root:  #字典开头的空3格,列表开头的子项空4个空格.
+     vsphere_platform:
+        virtualbox:
+           vagrant_offline_install_file: "vagrant_2.0.2_x86_64.rpm"
+           virtualbox_offline_install_file: "VirtualBox-5.2-5.2.6_120293_el7-1.x86_64.rpm"
+           vagrant_box_name: "centos1708-kernel4.4.116-docker-17.12.0-jre9-ce-go1.9"
+
+        vmware_esxi:
+
+        vmware_workstation:
+
+        openstack:
+
+        huawei_fusion_vsphere:
+
+     common_setting:
+        is_internet_up: true
+        host_machine_bridge_nic_name: "ens1f0" #宿主机／物理机桥接网卡名称
+        vm_nic0:
+           nic_name: "eth0" #虚拟机网卡名称
+           connect_manner: "nat"
+        vm_nic1:
+           nic_name: "eth1" #虚拟机网卡名称
+           connect_manner: "bridge"
+
+        software_root_dir: "/var/server"    #这个跟下面的配置是相关的,如果修改了, 下面相关的目录必须跟着改.
+        default_ansible_user: "centos"
+        default_ansible_user_grop: "centos"
+        default_ansible_password: "your_password"
+
+     host_config:
+        host_network_config:
+           vlan_name: "192.168.66.x"
+           gateway: "192.168.66.1"
+           netmask: "255.255.255.0"
+           dnsserver1: "192.168.66.31"
+           dnsserver2: "114.114.114.114"
+           network: "192.168.66.0/24"
+
+        vm_network_config:
+           vlan_name: "192.168.66.x"
+           gateway: "192.168.66.1"
+           netmask: "255.255.255.0"
+           dnsserver1: "192.168.66.31"
+           dnsserver2: "114.114.114.114"
+           network: "192.168.66.0/24"
+           prefix: "24"
+
+        online_install_config:
+           app_home: "/var/server"
+
+        offline_install_config:
+           app_home: "/var/server"
+
+        offline_rpm_save_config:
+           ansible_host_directory: "/var/server/offline-install"
+
+        mail_agent_config:
+           host: "smtp.mxhichina.com"
+           port: "465"
+           secure: "always"
+           username: "robot@ascs.tech"
+           password: "ascszhuceyu20160815!"
+           sender: "robot@ascs.tech"
+
+        mail_notify_config:
+           receiver_name: "Happy"
+           to: "user@your-email.com"
+           bcc: "user@your-email.com"
+           cc: "user@your-email.com"
+           charset: "utf-8"
+           subject: "Hello,Ansible-report for 自动创建RPM离线包"
+           body: "基于指定的虚拟机模版的RPM离线包已经创建成功."
+
+        vagrant_config:
+           app_home: "/var/server/vagrant"
+           virtualbox_template_filename: "centos1708-kernel4.4.116-docker-17.12.0-jre9-ce-go1.9.box"
+           virtualbox_template_directory: "files/virtualbox-template"
+           virtualbox_template_name: "centos1708-kernel4.4.116-docker-17.12.0-jre9-ce-go1.9"
+
+        yum_repo_config:
+           yum_software_packagename: "mesos"
+           #以下这2项不是必须的.
+           yum_repo_uri: "http://repos.mesosphere.io/el/7/noarch/RPMS/mesosphere-el-repo-7-1.noarch.rpm"
+           rpm-gpg-key: "/etc/pki/rpm-gpg/RPM-GPG-KEY-mesosphere"
+
+        system_test_config:
+           app_home: "/var/server/system_test"
+           test_web_app_uri: "http://172.30.0.10"
+
+     all_hosts:
+        ansible-hosts:
+            - name: "ansible.cityworks.cn"
+              uuid: "hangtian-zhihui-office-ansible-host-vm30"
+              ip: "192.168.66.2"
+              cpu: "1"
+              memory: "1024"
+              disk: 30
+              username: "centos"
+              password: "your_password"
+
+        online-test-hosts:
+            - name: "online-install.cityworks.cn"
+              uuid: "rpm-offline-install-test-host-vm1"
+              ip: "192.168.66.121"
+              cpu: "2"
+              memory: "1024"
+              disk: 30
+              username: "centos"
+              password: "your_password"
+
+        offline-test-hosts:
+            - name: "offline-install.cityworks.cn"
+              uuid: "rpm-offline-install-test-host-vm2"
+              ip: "192.168.66.131"
+              cpu: "2"
+              memory: "1024"
+              disk: 30
+              username: "centos"
+              password: "your_password"

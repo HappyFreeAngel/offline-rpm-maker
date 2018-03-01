@@ -1,0 +1,60 @@
+# this is a 'play' include
+
+- name: Vagrant playbook从模版动态创建虚拟机，设置IP网络，并启动虚拟机，为自动化部署做好准备.
+  hosts: localhost
+#  gather_facts: False
+  become: false
+  become_method: sudo
+  gather_facts: False
+
+  vars:
+          project_info: "{{ lookup('file','input.yml') | from_yaml }}"
+
+  tasks:
+    - name: "set short hand project_root"
+      set_fact: project_root="{{project_info['project_root']}}"
+
+    - name: "set short hand vars"
+      set_fact: commonsetting="{{project_info['project_root']['common_setting']}}"
+
+    - name: "set short hand vars"
+      set_fact: hostconfig="{{project_root['host_config']}}"
+
+    - name: "set short hand vars"
+      set_fact: appconfig="{{hostconfig['vagrant_config']}}"
+
+    - name: "create the {{appconfig['app_home']}} directory"
+      file: path={{appconfig['app_home']}} owner=centos group=centos   state=directory mode=0755
+
+    - name: "create the {{appconfig['app_home']}} directory"
+      file: path={{appconfig['app_home']}}/{{hostconfig['yum_repo_config']['yum_software_packagename']}} owner=centos group=centos   state=directory mode=0755
+
+    - name: "根据input.yml生成Vagrantfile配置文件"
+      template: src=templates/vagrant/conf/Vagrantfile.j2 dest={{appconfig['app_home']}}/{{hostconfig['yum_repo_config']['yum_software_packagename']}}/Vagrantfile
+      delegate_to: 127.0.0.1
+
+    - name: "判断确保virtualbox/vmware 服务是否已经打开,否则vagrant up 无法运行"
+      shell: ps aux | grep 'virtualbox'
+      register: virtualbox_status
+
+    - name: "确保virtualbox尚未运行,现在打开运行"
+      shell: virtualbox &
+      ignore_errors: yes
+      when: virtualbox_status.stdout.find("virutalbox") ==-1
+
+    - name: "判断模版是否存在"
+      shell: vagrant box list | grep "{{appconfig['virtualbox_template_name']}}"
+      register: template_status
+
+
+    - name: "copy {{appconfig['template_filename']}} to {{appconfig['app_home']}}/{{appconfig['template_filename']}}"
+      copy: src={{appconfig['virtualbox_template_directory']}}/{{appconfig['virtualbox_template_filename']}}   dest={{appconfig['app_home']}}/{{hostconfig['yum_repo_config']['yum_software_packagename']}}/{{appconfig['virtualbox_template_filename']}}   owner=centos group=centos mode=0755
+      when: template_status.stdout.find('{{appconfig['virtualbox_template_name']}}') == -1
+
+    - name: "导入模版"
+      shell: cd {{appconfig['app_home']}}/{{hostconfig['yum_repo_config']['yum_software_packagename']}};  vagrant box add {{appconfig['virtualbox_template_filename']}} --name={{appconfig['virtualbox_template_name']}}
+      when: template_status.stdout.find('{{appconfig['virtualbox_template_name']}}') == -1
+
+
+    - name: "切换到指定目录执行部署虚拟机部署工作."
+      shell: cd {{appconfig['app_home']}}/{{hostconfig['yum_repo_config']['yum_software_packagename']}}; vagrant destroy -f ; vagrant up --parallel;

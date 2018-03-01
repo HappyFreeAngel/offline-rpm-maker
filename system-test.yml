@@ -1,0 +1,23 @@
+---
+- name: just for delay .
+  hosts: localhost
+  connection: local
+  vars:
+          project_info: "{{ lookup('file','input.yml') | from_yaml }}"
+
+  tasks:
+    - name: "set short hand project_root"
+      set_fact: project_root="{{project_info['project_root']}}"
+
+    - name: "set short hand vars"
+      set_fact: commonsetting="{{project_info['project_root']['common_setting']}}"
+
+    - name: "set short hand vars"
+      set_fact: hostconfig="{{ project_root['host_config'] }}"
+
+    - name: "set short hand vars"
+      set_fact: appconfig="{{hostconfig['system_test_config']}}"
+
+    - name: "系统测试，功能待完善..."
+      pause: seconds={{ wait_time_in_seconds }}
+
